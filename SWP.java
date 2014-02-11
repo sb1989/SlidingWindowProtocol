@@ -81,6 +81,10 @@ public class SWP {
      *==========================================================================*/
     private boolean no_nak = true;
     private Packet int_buf[] = new Packet[NR_BUFS];
+
+    /**
+     * Initilize inf_buf[]
+     */
     private void init_int_buff() {
         for (int i=0; i<NR_BUFS; i++) {
             this.int_buf[i] = new Packet();
@@ -88,12 +92,36 @@ public class SWP {
     }
 
     private boolean arrived[] = new boolean[NR_BUFS];
+
+    /**
+     * Initialize arrived[]
+     */
     private void init_arrived() {
         for (int i=0; i<NR_BUFS; i++) {
            this.arrived[i] = false;
         }
     }
 
+    /**
+     * Return true if a <= b < c circularly; false otherwise.
+     * @param a int
+     * @param b int
+     * @param c int
+     * @return boolean
+     */
+    private boolean between(int a, int b, int c) {
+        if (a<=b&&b<c||c<a&&c<=b||b<c&&c<a) {
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Send the frame from output buffer to the physical layer
+     * @param frame_kind DATA, ACK, NAK
+     * @param frame_number sequence number
+     * @param frame_expected to calculate the acknowledgement number
+     * @param out_buffer from which the output frame is extracted
+     */
     private void send_frame(int frame_kind, int frame_number, int frame_expected, Packet out_buffer[]) {
         PFrame frame = new PFrame(); // scratch
         frame.kind = frame_kind; // DATA, ACK, NAK
@@ -112,6 +140,9 @@ public class SWP {
         this.stop_ack_timer();
     }
 
+    /**
+     * Sliding Window Protocol (i.e. protocol 6)
+     */
     public void protocol6() {
         this.init(); // initialize the out buffer
         this.init_int_buff(); // initialize the input buffer
@@ -125,7 +156,7 @@ public class SWP {
         int too_far = NR_BUFS; // upper edge of receiver's window + 1
 
         int i; // index into buffer array
-        PFrame r;  // Scratch
+        PFrame frame_received = new PFrame();  // Scratch
         int nbuffered = 0; // how many output buffers currently used
 
         this.enable_network_layer(NR_BUFS);
@@ -135,10 +166,22 @@ public class SWP {
                 case (PEvent.NETWORK_LAYER_READY):
                     nbuffered++;
                     this.from_network_layer(out_buf[next_frame_to_send%NR_BUFS]);
-
+                    this.send_frame(PFrame.DATA, next_frame_to_send, frame_expected, out_buf);
                     next_frame_to_send++;
                     break;
                 case (PEvent.FRAME_ARRIVAL ):
+                    this.from_physical_layer(frame_received);
+                    if(frame_received.kind==PFrame.DATA) {
+                        // An undamanged frame has arrived
+                        if(frame_received.seq!=frame_expected&&this.no_nak) {
+                            this.send_frame(PFrame.NAK, 0, frame_expected, out_buf);
+                        }
+                        else {
+                            this.start_ack_timer();
+                        }
+                        // TODO 
+
+                    }
                     break;
                 case (PEvent.CKSUM_ERR):
                     break;
