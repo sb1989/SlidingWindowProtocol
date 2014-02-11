@@ -11,6 +11,8 @@
  *          Singapore 639798                                     *
  *===============================================================*/
 
+import com.sun.xml.internal.ws.api.message.Packet;
+
 public class SWP {
 
 /*========================================================================*
@@ -97,8 +99,7 @@ public class SWP {
 	      case (PEvent.ACK_TIMEOUT): 
                    break; 
             default: 
-		   System.out.println("SWP: undefined event type = " 
-                                       + event.type); 
+		   System.out.println("SWP: undefined event type = "  + event.type);
 		   System.out.flush();
 	   }
       }      
