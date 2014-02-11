@@ -133,6 +133,12 @@ public class SWP {
         }
         return false;
     }
+
+
+    private int inc(int seq) {
+        return (seq+1)%(MAX_SEQ+1);
+    }
+
     /**
      * Send the frame from output buffer to the physical layer
      * @param frame_kind DATA, ACK, NAK
@@ -185,13 +191,14 @@ public class SWP {
                     nr_output_buffered++;
                     this.from_network_layer(out_buf[next_frame_to_send%NR_BUFS]);
                     this.send_frame(PFrame.DATA, next_frame_to_send, frame_expected, this.out_buf);
-                    next_frame_to_send++;
+                    next_frame_to_send = inc(next_frame_to_send);
                     break;
                 case (PEvent.FRAME_ARRIVAL ): // receiving
                     this.from_physical_layer(frame_received);
                     if(frame_received.kind==PFrame.DATA) {
                         // An undamanged frame has arrived
                         if(frame_received.seq!=frame_expected&&this.no_nak) {
+                            // suspect losing frame if the frame is not in order
                             this.send_frame(PFrame.NAK, 0, frame_expected, this.out_buf); // seq number not expected
                         }
                         else {
@@ -211,7 +218,7 @@ public class SWP {
                                 this.no_nak = true;
                                 this.arrived[frame_expected%NR_BUFS] = false;
                                 frame_expected++;
-                                too_far++;
+                                too_far = inc(too_far);
                                 this.start_ack_timer();
                             }
                         }
@@ -221,14 +228,15 @@ public class SWP {
                         frame_received.ack is all frames received correctly received and acknowledged
                         nak for the
                          */
-                        this.send_frame(PFrame.DATA, (frame_received.seq+1)%(MAX_SEQ+1), frame_expected, this.out_buf);
+                        this.send_frame(PFrame.DATA, (frame_received.ack+1)%(MAX_SEQ+1), frame_expected, this.out_buf);
                     }
 
                     while(between(ack_expected, frame_received.ack, next_frame_to_send)) {
                         // acknowledgement received for the [lower, .., ack]
                         nr_output_buffered--;
                         stop_timer(ack_expected%NR_BUFS);
-                        ack_expected++;
+                        ack_expected = inc(ack_expected);
+                        this.enable_network_layer(1); // suspect losing frame if the frame is not in order
                     }
                     break;
                 case (PEvent.CKSUM_ERR):
