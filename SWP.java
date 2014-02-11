@@ -2,7 +2,7 @@
  *  File: SWP.java                                               *
  *                                                               *
  *  This class implements the sliding window protocol            *
- *  Used by VMach class					         *
+ *  Used by VMach class					                         *
  *  Uses the following classes: SWE, Packet, PFrame, PEvent,     *
  *                                                               *
  *  Author: Professor SUN Chengzheng                             *
@@ -10,6 +10,10 @@
  *          Nanyang Technological University                     *
  *          Singapore 639798                                     *
  *===============================================================*/
+
+import java.util.Timer;
+import java.util.TimerTask;
+
 /**
  * User: Danyang
  * Date: 2/11/14
@@ -85,8 +89,16 @@ public class SWP {
     /*===========================================================================*
         implement your Protocol Variables and Methods below:
      *==========================================================================*/
+    // Sending Receiving
     private boolean no_nak = true;
     private Packet in_buf[] = new Packet[NR_BUFS];
+
+    // Timers
+    private static final int NORMAL_TIMEOUT = 600;
+    private static final int ACK_TIMEOUT = 300;
+    Timer normal_timers[] = new Timer[NR_BUFS]; // one-time timer; new Timer() every time
+    Timer ack_timer; // one-time timer; new Timer() every time
+
 
     /**
      * Initilize inf_buf[]
@@ -245,20 +257,55 @@ public class SWP {
     */
 
     private void start_timer(int seq) {
-
+        this.stop_timer(seq);
+        this.normal_timers[seq%NR_BUFS] = new Timer();
+        this.normal_timers[seq%NR_BUFS].schedule(new NormalTimerTask(seq), NORMAL_TIMEOUT);
     }
 
     private void stop_timer(int seq) {
-
+        Timer temp = this.normal_timers[seq%NR_BUFS];
+        if(temp!=null) {
+            temp.cancel();
+        }
     }
 
-    private void start_ack_timer( ) {
-
+    private void start_ack_timer() {
+        this.stop_ack_timer();
+        this.ack_timer = new Timer();
+        this.ack_timer.schedule(new AckTimerTask(), ACK_TIMEOUT);
     }
 
     private void stop_ack_timer() {
-
+        if(this.ack_timer!=null) {
+            this.ack_timer.cancel();
+        }
     }
+
+    // Internal Classes
+    private class NormalTimerTask extends TimerTask {
+        private int seq;
+
+        private NormalTimerTask(int seq) {
+            super(); // following python convention
+            this.seq = seq;
+        }
+
+        @Override
+        public void run() {
+            SWP.this.swe.generate_timeout_event(seq);
+        }
+    }
+
+    private class AckTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            SWP.this.swe.generate_acktimeout_event();
+        }
+    }
+
+
+
+
 
 }//End of class
 
