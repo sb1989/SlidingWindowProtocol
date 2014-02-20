@@ -192,7 +192,6 @@ public class SWP {
         int frame_expected = 0; // lower edge of receiver's window
         int too_far = NR_BUFS; // upper edge of receiver's window + 1
 
-        // int i; // index into buffer array
         PFrame frame_received = new PFrame();  // Scratch
         // int nr_output_buffered = 0; // how many output buffers currently used // it is written but never read
 
