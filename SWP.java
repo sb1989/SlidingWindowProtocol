@@ -96,8 +96,8 @@ public class SWP {
     // Timers
     private static final int NORMAL_TIMEOUT = 600;
     private static final int ACK_TIMEOUT = 300;
-    Timer normal_timers[] = new Timer[NR_BUFS]; // one-time timer; new Timer() every time
-    Timer ack_timer; // one-time timer; new Timer() every time
+    private Timer normal_timers[] = new Timer[NR_BUFS]; // one-time timer; new Timer() every time
+    private Timer ack_timer; // one-time timer; new Timer() every time
 
 
     /**
@@ -121,17 +121,25 @@ public class SWP {
     }
 
     /**
-     * Return true if a <= b < c circularly; false otherwise.
+     * Return true if circularly; false otherwise.
+     * see if it falls within the window
+     * following convention of b \in [a, c)
      * @param a int
      * @param b int
      * @param c int
      * @return boolean
      */
     private boolean between(int a, int b, int c) {
-        if (a<=b&&b<c||c<a&&c<=b||b<c&&c<a) {
-            return true;
+        // normal situation
+        if(a<c) {
+            return a<=b&&b<c;
+        }
+        else if (c<a) {
+            return a<=b || b<c;
         }
         return false;
+
+
     }
 
     /**
@@ -164,9 +172,9 @@ public class SWP {
         }
         this.to_physical_layer(frame);
         if (frame_kind==PFrame.DATA) { // start timer only after sending
-            this.start_timer(frame_number); // TODO
+            this.start_timer(frame_number); // frame number correspond to the sequence number
         }
-        this.stop_ack_timer();
+        this.stop_ack_timer(); // piggybacked
     }
 
     /**
@@ -218,6 +226,7 @@ public class SWP {
                             // frames received may be in any order
                             this.arrived[frame_received.seq%NR_BUFS] = true;
                             this.in_buf[frame_received.seq%NR_BUFS] = frame_received.info;
+
                             while(this.arrived[frame_expected%NR_BUFS]){
                                 /*
                                 Pass frames and advance window.
@@ -239,7 +248,7 @@ public class SWP {
                             }
                         }
                     }
-                    if(frame_received.kind==PFrame.NAK&&this.between(ack_expected, (frame_received.ack+1)%(MAX_SEQ+1), next_frame_to_send)) {
+                    if(frame_received.kind==PFrame.NAK&&between(ack_expected, (frame_received.ack+1)%(MAX_SEQ+1), next_frame_to_send)) {
                         /*
                         frame_received.ack is all frames received correctly received and acknowledged
                         nak for the
