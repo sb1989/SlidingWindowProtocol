@@ -164,7 +164,7 @@ public class SWP {
         }
         this.to_physical_layer(frame);
         if (frame_kind==PFrame.DATA) { // start timer only after sending
-            this.start_timer(frame_number%NR_BUFS);
+            this.start_timer(frame_number%NR_BUFS); // TODO
         }
         this.stop_ack_timer();
     }
@@ -222,12 +222,19 @@ public class SWP {
                                 /*
                                 Pass frames and advance window.
                                 [expected, .., frame_received, .., too far]
+
+                                When a frame whose sequence number is equal to the lower edge of the window
+                                is received, it is passed to the network layer, an acknowledgement is generated (timer start),
+                                and the window is rotated by one.
+
+                                Notice: Network Layer must receive the packet in order
                                  */
                                 this.to_network_layer(this.in_buf[frame_expected%NR_BUFS]);
                                 this.no_nak = true;
                                 this.arrived[frame_expected%NR_BUFS] = false;
-                                frame_expected++;
-                                too_far = inc(too_far);
+                                // frame_expected++; // should do circular increment
+                                frame_expected = this.inc(frame_expected);
+                                too_far = this.inc(too_far);
                                 this.start_ack_timer();
                             }
                         }
@@ -247,13 +254,13 @@ public class SWP {
                          */
                         nr_output_buffered--;
                         stop_timer(ack_expected%NR_BUFS);
-                        ack_expected = inc(ack_expected); // looping until the ack_expected == frame_received.ack + 1
+                        ack_expected = this.inc(ack_expected); // looping until the ack_expected == frame_received.ack + 1
                         this.enable_network_layer(1); // grant credit to network_layer // suspect losing frame if the frame is not in order
                     }
                     break;
                 case (PEvent.CKSUM_ERR):
                     if(this.no_nak) {
-                        this.send_frame(PFrame.NAK, 0, frame_expected, this.out_buf); // damaged frame
+                        this.send_frame(PFrame.NAK, 0, frame_expected, this.out_buf); // frame DATA damaged
                     }
                     break;
                 case (PEvent.TIMEOUT):
