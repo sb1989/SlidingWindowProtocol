@@ -134,16 +134,21 @@ public class SWP {
         return false;
     }
 
-
+    /**
+     * Circular increment of a sequence number over the sequence number space
+     * @param seq sequence number
+     * @return seuqnce number + 1
+     */
     private int inc(int seq) {
         return (seq+1)%(MAX_SEQ+1);
     }
 
     /**
      * Send the frame from output buffer to the physical layer
+     * Piggybacking the ACK
      * @param frame_kind DATA, ACK, NAK
-     * @param frame_number sequence number
-     * @param frame_expected to calculate the acknowledgement number
+     * @param frame_number sequence number, ACK NAK frame by default frame_number = 0;
+     * @param frame_expected to calculate the acknowledgement number (the one before it)
      * @param out_buffer from which the output frame is extracted
      */
     private void send_frame(int frame_kind, int frame_number, int frame_expected, Packet out_buffer[]) {
@@ -153,7 +158,7 @@ public class SWP {
             frame.info = out_buffer[frame_number%NR_BUFS];
         }
         frame.seq = frame_number;
-        frame.ack = (frame_expected+MAX_SEQ)%(MAX_SEQ+1); // one before the frame_expected
+        frame.ack = (frame_expected+MAX_SEQ)%(MAX_SEQ+1); // one before the frame_expected // piggybacking the ack
         if (frame_kind==PFrame.NAK) {
             this.no_nak = false;
         }
@@ -174,7 +179,7 @@ public class SWP {
         // Send
         // e.g. 0 1 2 | 3 4 5 6 | 7 8
         int ack_expected = 0; // lower edge to the sender's window
-        int next_frame_to_send = 0; // upper edge of sender's windows + 1
+        int next_frame_to_send = 0; // upper edge of sender's windows + 1 // sequence number
         // Receive
         int frame_expected = 0; // lower edge of receiver's window
         int too_far = NR_BUFS; // upper edge of receiver's window + 1
@@ -188,6 +193,10 @@ public class SWP {
             wait_for_event(event);
             switch(event.type) {
                 case (PEvent.NETWORK_LAYER_READY): // sending out
+                    /*
+                    Whenever a new packet arrives from the network layer, it is given the next highest sequence number, and
+                    the upper edge of the window is advanced by one
+                     */
                     nr_output_buffered++;
                     this.from_network_layer(out_buf[next_frame_to_send%NR_BUFS]);
                     this.send_frame(PFrame.DATA, next_frame_to_send, frame_expected, this.out_buf);
@@ -228,15 +237,18 @@ public class SWP {
                         frame_received.ack is all frames received correctly received and acknowledged
                         nak for the
                          */
-                        this.send_frame(PFrame.DATA, (frame_received.ack+1)%(MAX_SEQ+1), frame_expected, this.out_buf);
+                        this.send_frame(PFrame.DATA, (frame_received.ack+1)%(MAX_SEQ+1), frame_expected, this.out_buf); // retransmit the lost DATA
                     }
 
                     while(between(ack_expected, frame_received.ack, next_frame_to_send)) {
-                        // acknowledgement received for the [lower, .., ack]
+                        /*
+                        When an acknowledgement comes in, the lower edge is advanced by one.
+                        Acknowledgement received for the series of frames [lower, .., ack] (ACK not for single frame)
+                         */
                         nr_output_buffered--;
                         stop_timer(ack_expected%NR_BUFS);
-                        ack_expected = inc(ack_expected);
-                        this.enable_network_layer(1); // suspect losing frame if the frame is not in order
+                        ack_expected = inc(ack_expected); // looping until the ack_expected == frame_received.ack + 1
+                        this.enable_network_layer(1); // grant credit to network_layer // suspect losing frame if the frame is not in order
                     }
                     break;
                 case (PEvent.CKSUM_ERR):
@@ -248,7 +260,7 @@ public class SWP {
                     this.send_frame(PFrame.DATA, this.oldest_frame, frame_expected, this.out_buf);
                     break;
                 case (PEvent.ACK_TIMEOUT):
-                    this.send_frame(PFrame.ACK, 0, frame_expected, this.out_buf);
+                    this.send_frame(PFrame.ACK, 0, frame_expected, this.out_buf); // retransmit ACK if have waited too long for piggybacking
                     break;
                 default:
                     System.out.println("SWP: undefined event type = "  + event.type);
@@ -264,12 +276,20 @@ public class SWP {
         of the frame associated with this timer,
     */
 
+    /**
+     * Start a normal timer for frame
+     * @param seq sequence number
+     */
     private void start_timer(int seq) {
         this.stop_timer(seq);
         this.normal_timers[seq%NR_BUFS] = new Timer();
         this.normal_timers[seq%NR_BUFS].schedule(new NormalTimerTask(seq), NORMAL_TIMEOUT);
     }
 
+    /**
+     * Stop a normal timer for frame
+     * @param seq sequence number
+     */
     private void stop_timer(int seq) {
         Timer temp = this.normal_timers[seq%NR_BUFS];
         if(temp!=null) {
@@ -277,12 +297,18 @@ public class SWP {
         }
     }
 
+    /**
+     * Start a ack timer for a frame
+     */
     private void start_ack_timer() {
         this.stop_ack_timer();
         this.ack_timer = new Timer();
         this.ack_timer.schedule(new AckTimerTask(), ACK_TIMEOUT);
     }
 
+    /**
+     * Stop a ack timber for a frame
+     */
     private void stop_ack_timer() {
         if(this.ack_timer!=null) {
             this.ack_timer.cancel();
