@@ -164,7 +164,7 @@ public class SWP {
         }
         this.to_physical_layer(frame);
         if (frame_kind==PFrame.DATA) { // start timer only after sending
-            this.start_timer(frame_number%NR_BUFS); // TODO
+            this.start_timer(frame_number); // TODO
         }
         this.stop_ack_timer();
     }
@@ -300,7 +300,7 @@ public class SWP {
     private void stop_timer(int seq) {
         if(this.normal_timers[seq%NR_BUFS]!=null) {
             this.normal_timers[seq%NR_BUFS].cancel();
-            this.normal_timers[seq%NR_BUFS] = null;
+            // this.normal_timers[seq%NR_BUFS] = null;
         }
     }
 
@@ -319,7 +319,7 @@ public class SWP {
     private void stop_ack_timer() {
         if(this.ack_timer!=null) {
             this.ack_timer.cancel();
-            this.ack_timer = null;
+            // this.ack_timer = null;
         }
     }
 
@@ -334,6 +334,7 @@ public class SWP {
 
         @Override
         public void run() {
+            SWP.this.stop_timer(this.seq);
             SWP.this.swe.generate_timeout_event(seq);
         }
     }
@@ -341,6 +342,7 @@ public class SWP {
     private class AckTimerTask extends TimerTask {
         @Override
         public void run() {
+            SWP.this.stop_ack_timer();
             SWP.this.swe.generate_acktimeout_event();
         }
     }
