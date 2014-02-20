@@ -184,9 +184,9 @@ public class SWP {
         int frame_expected = 0; // lower edge of receiver's window
         int too_far = NR_BUFS; // upper edge of receiver's window + 1
 
-        int i; // index into buffer array
+        // int i; // index into buffer array
         PFrame frame_received = new PFrame();  // Scratch
-        int nr_output_buffered = 0; // how many output buffers currently used
+        // int nr_output_buffered = 0; // how many output buffers currently used // it is written but never read
 
         this.enable_network_layer(NR_BUFS);
         while(true) {
@@ -197,7 +197,7 @@ public class SWP {
                     Whenever a new packet arrives from the network layer, it is given the next highest sequence number, and
                     the upper edge of the window is advanced by one
                      */
-                    nr_output_buffered++;
+                    // nr_output_buffered++;
                     this.from_network_layer(out_buf[next_frame_to_send%NR_BUFS]);
                     this.send_frame(PFrame.DATA, next_frame_to_send, frame_expected, this.out_buf);
                     next_frame_to_send = inc(next_frame_to_send);
@@ -252,7 +252,7 @@ public class SWP {
                         When an acknowledgement comes in, the lower edge is advanced by one.
                         Acknowledgement received for the series of frames [lower, .., ack] (ACK not for single frame)
                          */
-                        nr_output_buffered--;
+                        // nr_output_buffered--;
                         stop_timer(ack_expected%NR_BUFS);
                         ack_expected = this.inc(ack_expected); // looping until the ack_expected == frame_received.ack + 1
                         this.enable_network_layer(1); // grant credit to network_layer // suspect losing frame if the frame is not in order
