@@ -218,7 +218,7 @@ public class SWP {
                             // frames received may be in any order
                             this.arrived[frame_received.seq%NR_BUFS] = true;
                             this.in_buf[frame_received.seq%NR_BUFS] = frame_received.info;
-                            while(arrived[frame_expected%NR_BUFS]){
+                            while(this.arrived[frame_expected%NR_BUFS]){
                                 /*
                                 Pass frames and advance window.
                                 [expected, .., frame_received, .., too far]
@@ -298,9 +298,9 @@ public class SWP {
      * @param seq sequence number
      */
     private void stop_timer(int seq) {
-        Timer temp = this.normal_timers[seq%NR_BUFS];
-        if(temp!=null) {
-            temp.cancel();
+        if(this.normal_timers[seq%NR_BUFS]!=null) {
+            this.normal_timers[seq%NR_BUFS].cancel();
+            this.normal_timers[seq%NR_BUFS] = null;
         }
     }
 
@@ -319,6 +319,7 @@ public class SWP {
     private void stop_ack_timer() {
         if(this.ack_timer!=null) {
             this.ack_timer.cancel();
+            this.ack_timer = null;
         }
     }
 
