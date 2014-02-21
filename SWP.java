@@ -138,8 +138,6 @@ public class SWP {
             return a<=b || b<c;
         }
         return false;
-
-
     }
 
     /**
@@ -174,7 +172,7 @@ public class SWP {
         if (frame_kind==PFrame.DATA) { // start timer only after sending
             this.start_timer(frame_number); // frame number correspond to the sequence number
         }
-        this.stop_ack_timer(); // piggybacked
+        this.stop_ack_timer(); // piggybagged
     }
 
     /**
@@ -213,10 +211,9 @@ public class SWP {
                     this.from_physical_layer(frame_received);
                     if(frame_received.kind==PFrame.DATA) {
                         // An undamanged frame has arrived
-                        if(frame_received.seq!=frame_expected&&this.no_nak) {
-                            // suspect losing frame if the frame is not in order
-                            this.send_frame(PFrame.NAK, 0, frame_expected, this.out_buf); // seq number not expected
-                        }
+					if(frame_received.seq!=frame_expected&&this.no_nak) {
+					    this.send_frame(PFrame.NAK, 0, frame_expected, this.out_buf); // seq number not expected
+					}
                         else {
                             this.start_ack_timer();
                         }
