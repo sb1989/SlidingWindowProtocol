@@ -18,10 +18,10 @@ To run
 Run the following batch files in order  
 1. Compile.bat  
 2. NetSim.bat  
-3. VMach1.bat
+3. VMach1.bat  
 4. VMach2.bat  
 ###Command Line
-```
+```bash
 $ javac SWP.java
 $ java NetSim 3
 $ java VMach 1
