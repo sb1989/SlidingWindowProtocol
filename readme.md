@@ -1,10 +1,5 @@
-Legacy Series: Sliding Window Protocol
+Sliding Window Protocol - 2014 Spring
 ============
-Purpose of this code
-------------
-One senior's legacy for the adorable juniors.  
-
-
 General Info
 ------------
 Title: Sliding Window Protocol (Data link layer)  
